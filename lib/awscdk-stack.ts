@@ -1,12 +1,12 @@
+/* ***************************
+  Task 1. EC2-based deployment
+  + Autoscaling group for EC2 instances
+  + Application Load Balancer
+*/
+
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as cdk from 'aws-cdk-lib';
-
-/*
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as autoscaling from 'aws-cdk-lib/aws-autoscaling';
-import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-*/
 
 const ec2 = cdk.aws_ec2;
 const autoscaling = cdk.aws_autoscaling;
