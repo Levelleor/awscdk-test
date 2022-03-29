@@ -1,5 +1,5 @@
 /* ***************************
-  Task 2. Container-based deployment
+  Task 3. GitOps Infrastructure (via ECS Fargate cluster)
   + ECR as container-image hosting
   + Fargate as serverless compute engine for containers
 */
@@ -14,15 +14,19 @@ const iam = cdk.aws_iam;
 const ecsPatterns = cdk.aws_ecs_patterns;
 const ecr = cdk.aws_ecr;
 
-export class AwscdkStack_1 extends Stack {
+export class AwscdkStack_2 extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
+    const imageRepo = new cdk.CfnParameter(this, "imageRepo", {
+      type: "String",
+      description: "The repository where Docker container image of the app is stored."});
+    
     // VPC with 2 availability zones
-    const vpc = new ec2.Vpc(this, 'vpc', {maxAzs: 2});
+    const vpc = new ec2.Vpc(this, 'gitops-vpc', {maxAzs: 2});
 
     // Describe permissions of an IAM user for Fargate task definition
-    const taskIamRole = new iam.Role(this, "AppRole", {
+    const taskIamRole = new iam.Role(this, "gitops-approle", {
       roleName: "AppRole",
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
       managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2ContainerRegistryPowerUser')]
@@ -34,22 +38,21 @@ export class AwscdkStack_1 extends Stack {
     });
 
     // Define user that will interact with ECR public gallery
-    const ecrUser = new iam.User(this, 'ECRUser');
+    const ecrUser = new iam.User(this, 'gitops-ECRUser');
     ecr.PublicGalleryAuthorizationToken.grantRead(ecrUser);
 
     // Create an ECS cluster
-    const cluster = new ecs.Cluster(this, 'service-cluster', {
-      clusterName: 'service-cluster',
+    const cluster = new ecs.Cluster(this, 'gitops-cluster', {
+      clusterName: 'gitops-cluster',
       containerInsights: true,
       vpc: vpc,
     });
 
-    // Define public AWS ECR repo and the image to use from it
-    const repo = ecr.Repository.fromRepositoryName(this, 'PublicECRRepo', 'public.ecr.aws/ubuntu/apache2');
-    const image = ecs.ContainerImage.fromEcrRepository(repo, 'latest');
+    // Define public Docker repo where the app image is pulled from
+    const image = ecs.ContainerImage.fromRegistry(imageRepo.valueAsString);
     
     // Describe container parameters
-    taskDefinition.addContainer('MyContainer', {
+    taskDefinition.addContainer('gitops-2048app', {
       image: image,
       portMappings: [{ containerPort: 80 }],
       memoryReservationMiB: 256,
@@ -58,15 +61,15 @@ export class AwscdkStack_1 extends Stack {
 
     // Fargate Serverless Service
     // rollaback: true - rollbacks the deploy in case of an error
-    new ecsPatterns.ApplicationLoadBalancedFargateService(this, "MyApp", {
+    new ecsPatterns.ApplicationLoadBalancedFargateService(this, "gitops-app", {
       cluster,
       circuitBreaker: {
         rollback: true,
       },
       taskDefinition: taskDefinition,
       desiredCount: 2,
-      serviceName: 'MyWebApp'
+      serviceName: 'gitops-web-app'
     });
-    
+
   }
 }
